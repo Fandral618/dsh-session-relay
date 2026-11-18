@@ -1,0 +1,24 @@
+# Session relay bundle patch (Loader patch dialect: a top-level YAML array).
+#
+# One Host row. The Host plugin routes messages between paired Sessions and
+# registers the `session_send` and `session_whoami` tools; the browser half is
+# declared by `dsh.client` in package.json and loaded by the Client module
+# loader, not by a second Host row.
+#
+# `pairs` ships empty on purpose: Session ids are unique to one installation,
+# so a shared default would point at Sessions that do not exist anywhere else.
+# Add your own pairs in Plugins -> Session relay (the configuration card), or
+# override this row's `pairs` in the profile's cordis.patch.yml.
+- insert:
+    - id: session-relay
+      name: 'dsh-session-relay'
+      config:
+        pairs: []
+        # Per-caller rate limit, per hour.
+        maxPerHour: 100
+        # Longest accepted message body, in characters.
+        maxTextLength: 50000
+        # Allow `delivery=auto` to wake an idle peer Session.
+        autoWake: true
+        # Separate budget for wakes, so two Sessions cannot ping-pong forever.
+        maxAutoWakePerHour: 30

@@ -1,0 +1,63 @@
+{
+  "name": "dsh-session-relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pair two independent DeepSeek Harness sessions and relay messages between them: queue a message to the peer's next turn, wake an idle peer, or schedule a one-shot delivery.",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "INSTALL.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --check index.js && node --check client.js"
+  },
+  "license": "MIT",
+  "author": "Fandral618",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fandral618/dsh-session-relay.git"
+  },
+  "homepage": "https://github.com/Fandral618/dsh-session-relay#readme",
+  "bugs": {
+    "url": "https://github.com/Fandral618/dsh-session-relay/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "session",
+    "relay",
+    "handoff",
+    "multi-agent"
+  ]
+}

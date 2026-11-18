@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Session relay",
+    "description": "Pairs two independent Sessions and relays messages between them: queue a message to the peer's next turn, wake an idle peer, or schedule a one-shot delivery."
+  }
+}
