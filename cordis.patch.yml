@@ -1,24 +1,22 @@
-# Session relay bundle patch (Loader patch dialect: a top-level YAML array).
+# 会话中继的 bundle patch（Loader patch 方言：顶层 YAML 数组）。
 #
-# One Host row. The Host plugin routes messages between paired Sessions and
-# registers the `session_send` and `session_whoami` tools; the browser half is
-# declared by `dsh.client` in package.json and loaded by the Client module
-# loader, not by a second Host row.
+# 只有一行 Host。Host 插件在配对的会话之间路由消息，并注册 `session_send`
+# 与 `session_whoami` 两个工具；浏览器侧由 package.json 里的 `dsh.client`
+# 声明、由 Client 模块加载器加载，不需要第二个 Host 行。
 #
-# `pairs` ships empty on purpose: Session ids are unique to one installation,
-# so a shared default would point at Sessions that do not exist anywhere else.
-# Add your own pairs in Plugins -> Session relay (the configuration card), or
-# override this row's `pairs` in the profile's cordis.patch.yml.
+# `pairs` 故意留空：会话 ID 只属于某一台机器，写死的共享默认值会指向别处
+# 根本不存在的会话。请在「插件 -> 会话中继」（配置卡片）里添加自己的配对，
+# 或在 profile 的 cordis.patch.yml 里覆盖这一行的 `pairs`。
 - insert:
     - id: session-relay
       name: 'dsh-session-relay'
       config:
         pairs: []
-        # Per-caller rate limit, per hour.
+        # 每个调用方每小时的消息条数上限。
         maxPerHour: 100
-        # Longest accepted message body, in characters.
+        # 可接受的最长消息正文，按字符计。
         maxTextLength: 50000
-        # Allow `delivery=auto` to wake an idle peer Session.
+        # 允许 `delivery=auto` 唤醒空闲的对端会话。
         autoWake: true
-        # Separate budget for wakes, so two Sessions cannot ping-pong forever.
+        # 唤醒的独立预算，避免两个会话来回互唤醒成死循环。
         maxAutoWakePerHour: 30

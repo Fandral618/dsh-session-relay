@@ -1,7 +1,7 @@
 /**
- * Browser half of session-relay: a configuration page for the plugin row.
- * Registers into the Plugins page's `plugins.row.config` slot and edits the
- * volatile `pairs` array through the shared settings form service.
+ * session-relay 的浏览器侧：插件行的配置页面。
+ * 注册到插件页的 `plugins.row.config` 插槽，通过共享的设置表单服务
+ * 编辑 volatile 的 `pairs` 数组。
  */
 window.__ModuleLoader__.load({
   id: 'dsh-session-relay',
@@ -83,7 +83,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => {
         const names = (mirrorSnapshot?.view?.namespaces ?? []).map((row) => row.ns)
-        console.info('[session-relay] settings namespaces', names, 'selected', namespace)
+        console.info('[session-relay] 配置命名空间', names, '已选中', namespace)
       }, [mirrorSnapshot, namespace])
 
       const form = useMemo(() => (namespace === undefined ? null : ctx.configForms.get(namespace)), [ctx, namespace])
@@ -297,7 +297,7 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'configForms'],
       apply(ctx) {
-        console.info('[session-relay] client module applied')
+        console.info('[session-relay] 客户端模块已加载')
         const Bound = (props) => h(PairsPage, { ...props, ctx })
         ctx.slots.inject('plugins.bundle.config', () =>
           ctx.slots.register(
@@ -323,7 +323,7 @@ window.__ModuleLoader__.load({
               name: 'settings.plugins.tab',
               id: 'session-relay',
               order: 60,
-              label: 'Session relay',
+              label: '会话中继',
             },
             Bound,
           ),

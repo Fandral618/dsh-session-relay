@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Pair two independent DeepSeek Harness sessions and relay messages between them: queue a message to the peer's next turn, wake an idle peer, or schedule a one-shot delivery.",
+  "description": "把两个互相独立的 DeepSeek Harness 会话配成一对并在它们之间投递消息：排队到对端下一回合、唤醒空闲对端，或安排一次性投递。",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",

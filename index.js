@@ -1,14 +1,13 @@
 /**
- * Session relay: bidirectional handoff between independent review/developer
- * Sessions, one or more project pairs.
+ * 会话中继：在互相独立的评审/开发会话之间双向交接，支持一对或多对项目。
  *
- * Delivery:
- *  - wake (default): a one-shot Schedule task targets the peer Session; the
- *    official delivery path wakes it and starts a turn (cold Sessions resume).
- *  - queue (wake:false): append to the peer's next-turn inbox without waking.
+ * 投递方式：
+ *  - wake（默认）：创建一个指向对端会话的一次性 Schedule 任务；由官方投递
+ *    通道唤醒它并开一个回合（冷会话会被恢复）。
+ *  - queue（wake:false）：只追加到对端下一回合的收件箱，不唤醒。
  *
- * Routing is by the caller's Session id: each Session belongs to one or more
- * configured pairs; the peer is the opposite side of the matched pair.
+ * 路由依据调用方自己的会话 ID：每个会话属于一对或多对已配置的配对，
+ * 对端就是命中的那一对的另一侧。
  */
 import { randomUUID } from 'node:crypto'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -20,9 +19,8 @@ export const inject = ['tools', 'agents', 'sessions', 'schedule', 'sessionContro
 
 const HOUR_MS = 60 * 60 * 1000
 /**
- * No default pair: Session ids belong to one installation, so a shipped
- * default would only ever point at Sessions that do not exist elsewhere.
- * Every installation configures its own pairs; see README.md / INSTALL.md.
+ * 不内置默认配对：会话 ID 只属于某一台机器，写死的默认值在别的机器上只会
+ * 指向根本不存在的会话。每台机器各自配置配对；见 README.md / INSTALL.md。
  */
 const DEFAULT_PAIRS = []
 
@@ -51,9 +49,9 @@ function text(value) {
 }
 
 /**
- * Resolve one Config field. DSH exposes fields declared `.volatile()` as refs:
- * the settings editor updates them in place, so `apply` must read them with
- * `field.get()` instead of using the field directly.
+ * 读取一个 Config 字段。DSH 把声明了 `.volatile()` 的字段暴露为 ref：
+ * 设置页会就地更新它们，所以 `apply` 必须用 `field.get()` 读取，
+ * 不能直接使用字段本身。
  *
  * @param {unknown} field
  * @param {unknown} fallback
@@ -99,8 +97,8 @@ function resolveRoute(pairs, callerSessionId, hint) {
   if (matches.length === 0) {
     return {
       error:
-        'this Session is not registered in any relay pair; add the Session id in Plugins → Session relay, ' +
-        'or call session_whoami to read this Session id first',
+        '当前会话没有登记进任何一对中继；请在「插件 → 会话中继」里登记会话 ID，' +
+        '或先调用 session_whoami 读取本会话 ID',
     }
   }
 
@@ -113,15 +111,15 @@ function resolveRoute(pairs, callerSessionId, hint) {
     selected = byIndex.length > 0 ? byIndex : byName
     if (selected.length === 0) {
       return {
-        error: `no registered pair matches "${hint}"; available: ${matches.map((pair) => pair.name).join(', ')}`,
+        error: `没有已登记的配对匹配 "${hint}"；可用：${matches.map((pair) => pair.name).join(', ')}`,
       }
     }
   }
   if (selected.length > 1) {
     return {
       error:
-        'this Session belongs to multiple relay pairs; pass pair=<name, project, or 1-based index>. ' +
-        `Available: ${selected.map((pair) => `${pair.index}:${pair.name}`).join(', ')}`,
+        '当前会话属于多对中继，请用 pair=<名称、项目名或 1-based 序号> 指明其中一对。' +
+        `可用：${selected.map((pair) => `${pair.index}:${pair.name}`).join(', ')}`,
     }
   }
 
@@ -141,24 +139,24 @@ export function apply(ctx, config = {}) {
     name: 'session-relay',
     order: 500,
     text:
-      'A bidirectional relay connects independent review/developer Session pairs. ' +
-      'If this Session is registered in a pair, use session_send to hand work to the peer. ' +
-      'Developer: after finishing a card and writing its evidence, you MUST call session_send(to="reviewer", text=...) ' +
-      'before ending the turn; merely writing files, presenting a zip, or ending the turn leaves the reviewer unnotified. ' +
-      'Reviewer: after reviewing, call session_send(to="developer", text=...) with verdict, findings and required changes. ' +
-      'Delivery is auto by default: a running peer receives the message at its next step (queue-jump, like the UI "插队发送"), ' +
-      'an idle peer is woken for a new turn, and a cold peer is resumed. Pass delivery=queue to only append without waking, ' +
-      'or delivery=schedule for an audited one-shot Schedule. ' +
-      'If the Session belongs to several pairs, pass pair=<name, project, or 1-based index>. ' +
-      'Stop the loop when the verdict is PASS: a PASS needs no reply; send at most one response per candidate. ' +
-      'Use session_whoami when a Session id is needed for registration.',
+      '一条双向中继连接互相独立的评审/开发会话对。' +
+      '如果当前会话已登记进某一对，用 session_send 把工作交给对端。' +
+      '开发方：完成一张卡片并写好证据后，必须在结束回合之前调用 session_send(to="reviewer", text=...)；' +
+      '只写文件、只给出 zip 或直接结束回合，评审方都不会收到通知。' +
+      '评审方：评审完成后调用 session_send(to="developer", text=...)，带上结论、发现的问题和需要改动的地方。' +
+      '默认投递方式是 auto：运行中的对端在下一个 step 收到消息（插队发送），' +
+      '空闲对端会被唤醒开新回合，冷会话会被恢复。传 delivery=queue 只追加不唤醒，' +
+      '传 delivery=schedule 走可审计的一次性 Schedule。' +
+      '如果当前会话属于多对，用 pair=<名称、项目名或 1-based 序号> 指明其中一对。' +
+      '结论为 PASS 时就停止循环：PASS 不需要回复；每个候选最多回复一次。' +
+      '需要会话 ID 登记配对时用 session_whoami。',
   })
 
   ctx.tools.register(
     defineTool({
       name: 'session_whoami',
       description:
-        'Return this conversation\'s Session id and working directory. Use it when registering this conversation in a relay pair.',
+        '返回当前会话的 Session ID 与工作目录。登记中继配对时用它。',
       parameters: {},
       output: {
         schema: {
@@ -170,12 +168,12 @@ export function apply(ctx, config = {}) {
           },
         },
         render: (_args, value) => [
-          { type: 'text', text: `sessionId=${value.sessionId} cwd=${value.cwd || '(unknown)'}` },
+          { type: 'text', text: `sessionId=${value.sessionId} cwd=${value.cwd || '(未知)'}` },
         ],
       },
       execute(_args, exec) {
         const session = exec.agent?.session
-        if (session === undefined) throw new Error('session_whoami must be called by an agent with a session')
+        if (session === undefined) throw new Error('session_whoami 必须由带会话的智能体调用')
         return {
           sessionId: session.id,
           cwd: session.header?.cwd ?? '',
@@ -188,37 +186,37 @@ export function apply(ctx, config = {}) {
     defineTool({
       name: 'session_send',
       description:
-        'Send a message to the peer of this Session\'s relay pair. Delivery auto (default): a running peer is steered at its next ' +
-        'step (queue-jump), an idle peer is woken for a new turn, a cold peer is resumed. delivery=queue only appends to the next turn; ' +
-        'delivery=schedule uses an audited one-shot schedule. The sender must be the reviewer or developer of a configured pair; ' +
-        'a Session in several pairs must pass pair.',
+        '向当前会话所属中继配对的对端发送消息。delivery 默认 auto：运行中的对端在下一个 step 被插队引导，' +
+        '空闲对端被唤醒开新回合，冷会话被恢复。delivery=queue 只追加到下一回合；' +
+        'delivery=schedule 走可审计的一次性 Schedule。发送方必须是某个已配置配对的评审或开发；' +
+        '属于多对的会话必须传 pair。',
       parameters: {
         to: {
           type: 'string',
           required: true,
           enum: ['reviewer', 'developer'],
-          description: 'The peer role. It must be the opposite of this Session\'s role in the matched pair.',
+          description: '对端角色，必须与本会话在命中配对中的角色相反。',
         },
         text: {
           type: 'string',
           required: true,
-          description: 'Message body; include commit/card/evidence or verdict/findings. A provenance header is added.',
+          description: '消息正文；写清 commit/卡片/证据，或结论/发现。会自动加上来源说明头。',
         },
         pair: {
           type: 'string',
-          description: 'Pair name, project, or 1-based index when this Session belongs to several pairs.',
+          description: '当前会话属于多对时，用配对名称、项目名或 1-based 序号指明其中一对。',
         },
         wake: {
           type: 'boolean',
           description:
-            'Legacy shortcut: false means delivery=queue; true means delivery=auto. Prefer delivery.',
+            '旧版快捷参数：false 等同 delivery=queue，true 等同 delivery=auto。建议直接用 delivery。',
         },
         delivery: {
           type: 'string',
           enum: ['auto', 'schedule', 'queue'],
           description:
-            'auto (default): steer a running peer at its next step, follow up an idle peer, resume a cold peer. ' +
-            'schedule: one-shot Schedule delivery to the peer\'s next turn (audited). queue: append without waking (live peer only).',
+            'auto（默认）：运行中的对端在下一个 step 被插队引导，空闲对端被跟进，冷会话被恢复。' +
+            'schedule：以一次性 Schedule 投递到对端下一回合（可审计）。queue：只追加不唤醒（仅限已加载的对端）。',
         },
       },
       output: {
@@ -258,18 +256,18 @@ export function apply(ctx, config = {}) {
 
         if (args.to !== direction) {
           throw new Error(
-            `direction mismatch: this Session is the ${direction === 'developer' ? 'reviewer' : 'developer'} in pair ` +
-              `"${pair.name}", so to must be "${direction}"`,
+            `方向不匹配：在本对 "${pair.name}" 中当前会话是${direction === 'developer' ? '评审' : '开发'}，` +
+              `所以 to 必须是 "${direction}"`,
           )
         }
 
         const bodyText = text(args.text)
-        if (bodyText.length === 0) throw new Error('message text must contain non-whitespace characters')
-        if (bodyText.length > maxTextLength) throw new Error(`message text exceeds ${maxTextLength} characters`)
+        if (bodyText.length === 0) throw new Error('消息正文不能只由空白字符组成')
+        if (bodyText.length > maxTextLength) throw new Error(`消息正文超过 ${maxTextLength} 字符上限`)
 
         const recent = pruneList(sentAt.get(callerSessionId) ?? [], now)
         sentAt.set(callerSessionId, recent)
-        if (recent.length >= maxPerHour) throw new Error(`session_send rate limit reached (${maxPerHour}/hour)`)
+        if (recent.length >= maxPerHour) throw new Error(`已触发 session_send 频率限制（${maxPerHour} 条/小时）`)
         recent.push(now)
 
         let delivery = args.delivery
@@ -288,7 +286,7 @@ export function apply(ctx, config = {}) {
           wakes.push(...recentWakes)
           if (wakes.length >= maxAutoWakePerHour) {
             throw new Error(
-              `auto-wake budget reached (${maxAutoWakePerHour}/hour); use delivery=queue to append, or wait for the window to reset`,
+              `自动唤醒预算已用完（${maxAutoWakePerHour} 条/小时）；改用 delivery=queue 追加，或等窗口重置`,
             )
           }
         }
@@ -317,8 +315,8 @@ export function apply(ctx, config = {}) {
               callerSessionId,
               ref: peerId,
               note: running
-                ? 'inserted at the peer\'s next step (queue-jump)'
-                : 'peer woken for a new turn',
+                ? '已插队到对端的下一个 step（不打断当前工具调用）'
+                : '已唤醒对端开新回合',
             }
           }
 
@@ -341,7 +339,7 @@ export function apply(ctx, config = {}) {
             targetSessionId: peerId,
             callerSessionId,
             ref: requestId,
-            note: 'cold peer resumed and woken',
+            note: '已恢复并唤醒冷会话',
           }
         }
 
@@ -349,7 +347,7 @@ export function apply(ctx, config = {}) {
           const body = prefix + '本条通过 Schedule 投递，唤醒你开新回合。' + `\n\n${bodyText}`
           const task = await ctx.schedule.create(
             {
-              title: `Relay ${direction === 'developer' ? 'reviewer→developer' : 'developer→reviewer'} (${pair.name})`,
+              title: `中继 ${direction === 'developer' ? '评审→开发' : '开发→评审'}（${pair.name}）`,
               prompt: body,
               timing: { kind: 'after', after_seconds: 1 },
               target: { kind: 'session', sessionId: peerId },
@@ -366,14 +364,14 @@ export function apply(ctx, config = {}) {
             targetSessionId: peerId,
             callerSessionId,
             ref: String(taskId),
-            note: 'one-shot schedule created; the peer starts a turn shortly',
+            note: '已创建一次性 Schedule 任务，对端稍后会开一个回合',
           }
         }
 
         const target = ctx.agents.get(peerId)
         if (target === undefined) {
           throw new Error(
-            `target conversation ${peerId} is not open in this Host; open it once, or use delivery=auto so it can be resumed`,
+            `目标会话 ${peerId} 在当前 Host 里没有打开；先打开一次，或改用 delivery=auto 让它被恢复`,
           )
         }
         const body = prefix + '仅入队，不唤醒；等你下一次回合处理。' + `\n\n${bodyText}`
@@ -390,7 +388,7 @@ export function apply(ctx, config = {}) {
           targetSessionId: peerId,
           callerSessionId,
           ref: message.id,
-          note: 'queued for the next turn; no turn was started',
+          note: '已排队到下一回合，未启动新回合',
         }
       },
     }),
